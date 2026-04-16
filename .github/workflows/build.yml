@@ -2,8 +2,6 @@ name: Build APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build:
@@ -16,17 +14,33 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
       - name: Grant gradlew permission
         run: chmod +x ./gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleDebug
+      - name: List projects
+        run: ./gradlew projects
+
+      - name: List tasks
+        run: ./gradlew tasks --all
+
+      - name: Build APK (auto-detect)
+        run: |
+          ./gradlew tasks --all | grep assembleDebug
+
+          echo "Trying common Android modules..."
+
+          if ./gradlew :app:assembleDebug; then exit 0; fi
+          if ./gradlew :android:assembleDebug; then exit 0; fi
+          if ./gradlew :aps3e:assembleDebug; then exit 0; fi
+
+          echo "No known module worked"
+          exit 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: aps3e-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: apk
+          path: "**/build/outputs/apk/debug/*.apk"
