@@ -17,26 +17,36 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Grant gradlew permission
+      - name: Grant permission
         run: chmod +x ./gradlew
 
-      - name: List projects
-        run: ./gradlew projects
+      - name: Show project tree
+        run: ./gradlew projects || true
 
-      - name: List tasks
-        run: ./gradlew tasks --all
+      - name: Show all tasks (safe)
+        run: ./gradlew tasks --all || true
 
-      - name: Build APK (auto-detect)
+      - name: Detect and build APK
         run: |
-          ./gradlew tasks --all | grep assembleDebug
+          set +e
 
-          echo "Trying common Android modules..."
+          echo "Trying :app:assembleDebug"
+          ./gradlew :app:assembleDebug
+          if [ $? -eq 0 ]; then exit 0; fi
 
-          if ./gradlew :app:assembleDebug; then exit 0; fi
-          if ./gradlew :android:assembleDebug; then exit 0; fi
-          if ./gradlew :aps3e:assembleDebug; then exit 0; fi
+          echo "Trying :android:assembleDebug"
+          ./gradlew :android:assembleDebug
+          if [ $? -eq 0 ]; then exit 0; fi
 
-          echo "No known module worked"
+          echo "Trying :aps3e:assembleDebug"
+          ./gradlew :aps3e:assembleDebug
+          if [ $? -eq 0 ]; then exit 0; fi
+
+          echo "Trying root assembleDebug"
+          ./gradlew assembleDebug
+          if [ $? -eq 0 ]; then exit 0; fi
+
+          echo "BUILD FAILED: No valid Android module found"
           exit 1
 
       - name: Upload APK
